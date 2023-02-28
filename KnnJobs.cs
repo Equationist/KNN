@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Runtime.CompilerServices;
 using Unity.Burst;
 using Unity.Collections;
@@ -49,7 +49,7 @@ namespace KNN.Jobs {
 
 
 	[BurstCompile(CompileSynchronously = true)]
-	public struct QueryKNearestBatchJob : IJobParallelForBatch {
+	public struct QueryKNearestBatchJob : IJobParallelFor {
 		[ReadOnly] KnnContainer m_container;
 		[ReadOnly] NativeSlice<float3> m_queryPositions;
 
@@ -74,12 +74,10 @@ namespace KNN.Jobs {
 			m_k = results.Length / queryPositions.Length;
 		}
 
-		public void Execute(int startIndex, int count) {
+		public void Execute(int index) {
 			// Write results to proper slice!
-			for (int index = startIndex; index < startIndex + count; ++index) {
-				NativeSlice<int> resultsSlice = m_results.Slice(index * m_k, m_k);
-				m_container.QueryKNearest(m_queryPositions[index], resultsSlice);
-			}
+			NativeSlice<int> resultsSlice = m_results.Slice(index * m_k, m_k);
+			m_container.QueryKNearest(m_queryPositions[index], resultsSlice);
 		}
 	}
 
@@ -120,7 +118,7 @@ namespace KNN.Jobs {
 
 
 	[BurstCompile(CompileSynchronously = true)]
-	public struct QueryRangeBatchJob : IJobParallelForBatch {
+	public struct QueryRangeBatchJob : IJobParallelFor {
 		[ReadOnly] KnnContainer m_container;
 		[ReadOnly] NativeSlice<float3> m_queryPositions;
 
@@ -135,17 +133,15 @@ namespace KNN.Jobs {
 			Results = results;
 		}
 
-		public void Execute(int startIndex, int count) {
+		public void Execute(int index) {
 			// Write results to proper slice!
-			for (int index = startIndex; index < startIndex + count; ++index) {
-				var tempList = new NativeList<int>(Allocator.Temp);
-				m_container.QueryRange(m_queryPositions[index], m_range, tempList);
+			var tempList = new NativeList<int>(Allocator.Temp);
+			m_container.QueryRange(m_queryPositions[index], m_range, tempList);
 
-				var result = Results[index];
-				result.SetResults(tempList);
+			var result = Results[index];
+			result.SetResults(tempList);
 
-				Results[index] = result;
-			}
+			Results[index] = result;
 		}
 	}
 
